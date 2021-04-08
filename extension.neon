@@ -3,6 +3,7 @@ parameters:
         config_path: null
     stubFiles:
         - stubs/BaseYii.stub
+        - stubs/Model.stub
 
 parametersSchema:
 	yii2: structure([
