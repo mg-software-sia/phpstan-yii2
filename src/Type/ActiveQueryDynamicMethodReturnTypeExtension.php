@@ -30,8 +30,6 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
 
     public function isMethodSupported(MethodReflection $methodReflection): bool
     {
-        return true;
-
         if (ParametersAcceptorSelector::selectSingle($methodReflection->getVariants())->getReturnType() instanceof ThisType) {
             return true;
         }
@@ -53,7 +51,11 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
                 throw new ShouldNotHappenException(sprintf('Invalid argument provided to asArray method at line %d', $methodCall->getLine()));
             }
 
-            return new ActiveQueryObjectType($calledOnType->getModelClass(), $argType->getValue(), $calledOnType->getClassName());
+            return new ActiveQueryObjectType($calledOnType->getModelClass(), $argType->getValue());
+        }
+
+        if (!\in_array($methodName, ['one', 'all'], true)) {
+            return new ActiveQueryObjectType($calledOnType->getModelClass(), $calledOnType->isAsArray());
         }
 
         if ($methodName === 'one') {
@@ -63,14 +65,9 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
             );
         }
 
-        if ($methodName === 'all') {
-            dd($methodReflection->getVariants()[0]->getReturnType());
-            return new ArrayType(
-                new IntegerType(),
-                $calledOnType->isAsArray() ? new ArrayType(new StringType(), new MixedType()) : new ObjectType($calledOnType->getModelClass())
-            );
-        }
-
-        return new ActiveQueryObjectType($calledOnType->getModelClass(), $calledOnType->isAsArray(), $calledOnType->getClassName());
+        return new ArrayType(
+            new IntegerType(),
+            $calledOnType->isAsArray() ? new ArrayType(new StringType(), new MixedType()) : new ObjectType($calledOnType->getModelClass())
+        );
     }
 }

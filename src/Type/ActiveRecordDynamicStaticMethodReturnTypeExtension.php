@@ -8,13 +8,11 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
 use PHPStan\Analyser\Scope;
 use PHPStan\Reflection\MethodReflection;
-use PHPStan\Reflection\ParametersAcceptorSelector;
 use PHPStan\Type\DynamicStaticMethodReturnTypeExtension;
 use PHPStan\Type\NullType;
 use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
-use yii\db\ActiveQuery;
 
 final class ActiveRecordDynamicStaticMethodReturnTypeExtension implements DynamicStaticMethodReturnTypeExtension
 {
@@ -42,13 +40,6 @@ final class ActiveRecordDynamicStaticMethodReturnTypeExtension implements Dynami
             );
         }
 
-        // Customer query class
-        $returnType = ParametersAcceptorSelector::selectSingle($methodReflection->getVariants())->getReturnType();
-        if ($returnType instanceof ObjectType && $returnType->getClassReflection()->isSubclassOf(ActiveQuery::class)) {
-            return new ActiveQueryObjectType($name, false, $returnType->getClassName());
-        }
-
-        // Dynamic class class
         return new ActiveQueryObjectType($name, false);
     }
 }
