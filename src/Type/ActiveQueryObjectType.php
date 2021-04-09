@@ -19,9 +19,9 @@ class ActiveQueryObjectType extends ObjectType
      */
     private $asArray;
 
-    public function __construct(string $modelClass, bool $asArray)
+    public function __construct(string $modelClass, bool $asArray, string $queryClass = 'yii\db\ActiveQuery')
     {
-        parent::__construct('yii\db\ActiveQuery');
+        parent::__construct($queryClass);
 
         $this->modelClass = $modelClass;
         $this->asArray = $asArray;

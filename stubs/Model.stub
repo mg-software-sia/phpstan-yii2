@@ -7,7 +7,7 @@ class Model
     /** @return \IteratorAggregate<string, mixed> */
     public function getIterator();
 
-    /** @return array<int|string, mixed> */
+    /** @return array<string, array<string>> */
     public function scenarios();
 
     /** @return array<mixed> */
