@@ -23,6 +23,7 @@ use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
 use PHPStan\Type\UnionType;
 use yii\db\ActiveQuery;
+use yii\db\ActiveRecord;
 
 final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethodReturnTypeExtension
 {
@@ -39,19 +40,22 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
             return true;
         }
 
-        return \in_array($methodReflection->getName(), ['asArray', 'one', 'all'], true);
+        return \in_array($methodReflection->getName(), ['asArray', 'one', 'all', 'each', 'batch'], true);
     }
 
     public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): Type
     {
         $methodName = $methodReflection->getName();
 
-        if (\in_array($methodName, ['asArray'])) {
-            return $this->_asArray($methodReflection, $methodCall, $scope);
-        }
-
-        if (\in_array($methodName, ['one', 'all'])) {
-            return $this->_oneOrAll($methodReflection, $methodCall, $scope);
+        switch ($methodName) {
+            case 'asArray':
+                return $this->_asArray($methodReflection, $methodCall, $scope);
+            case 'one':
+            case 'all':
+                return $this->_oneOrAll($methodReflection, $methodCall, $scope);
+            case 'each':
+            case 'batch':
+                return $this->_eachOrBatch($methodReflection, $methodCall, $scope);
         }
 
         // Forward type
@@ -88,15 +92,7 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
     {
         $methodName = $methodReflection->getName();
         $calledOnType = $scope->getType($methodCall->var);
-        $objectType = $this->_findObjectType($methodReflection->getVariants());
-        if (!$objectType) {
-            throw new ShouldNotHappenException(strtr('ObjectType return type not found for {c}::{m}()', [
-                '{c}' => $methodReflection->getDeclaringClass()->getName(),
-                '{m}' => $methodReflection->getName(),
-            ]));
-        }
-
-        $targetType = $calledOnType instanceof ArrayActiveQueryObjectType ? new ArrayType(new StringType(), new MixedType()) : $objectType;
+        $targetType = $this->_findSearchTarget($calledOnType, $methodReflection);
 
         // One
         if ($methodName === 'one') {
@@ -111,6 +107,57 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
             new IntegerType(),
             $targetType,
         );
+    }
+
+    private function _eachOrBatch(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): Type
+    {
+        $methodName = $methodReflection->getName();
+        $calledOnType = $scope->getType($methodCall->var);
+        $targetType = $this->_findSearchTarget(
+            $calledOnType,
+            $scope->getMethodReflection($calledOnType, 'one')
+        );
+
+        $each = new ArrayType(
+            new IntegerType(),
+            $targetType,
+        );
+
+        // Each
+        if ($methodName === 'each') {
+            return $each;
+        }
+
+        // Batch
+        return new ArrayType(
+            new IntegerType(),
+            $each,
+        );
+    }
+
+    private function _findSearchTarget(Type $calledOnType, MethodReflection $methodReflection): Type
+    {
+        $objectType = $this->_findObjectType($methodReflection->getVariants());
+        if (!$objectType) {
+            throw new ShouldNotHappenException(strtr('ObjectType return type not found for {c}::{m}()', [
+                '{c}' => $methodReflection->getDeclaringClass()->getName(),
+                '{m}' => $methodReflection->getName(),
+            ]));
+        }
+
+        //objectType->getClassReflection()->isSubclassOf(ActiveRecord::class)
+        if (!$objectType->isInstanceOf(ActiveRecord::class)) {
+            throw new ShouldNotHappenException(strtr('{c} must be subclass of {p}', [
+                '{c}' => $objectType->getClassName(),
+                '{p}' => ActiveRecord::class,
+            ]));
+        }
+
+        if ($calledOnType instanceof ArrayActiveQueryObjectType) {
+            return new ArrayType(new StringType(), new MixedType());
+        }
+
+        return $objectType;
     }
 
     /**
