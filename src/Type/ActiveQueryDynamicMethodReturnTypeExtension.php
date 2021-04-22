@@ -145,8 +145,7 @@ final class ActiveQueryDynamicMethodReturnTypeExtension implements DynamicMethod
             ]));
         }
 
-        //objectType->getClassReflection()->isSubclassOf(ActiveRecord::class)
-        if (!$objectType->isInstanceOf(ActiveRecord::class)) {
+        if (!$objectType->getClassReflection()->isSubclassOf(ActiveRecord::class)) {
             throw new ShouldNotHappenException(strtr('{c} must be subclass of {p}', [
                 '{c}' => $objectType->getClassName(),
                 '{p}' => ActiveRecord::class,
